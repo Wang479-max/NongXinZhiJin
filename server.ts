@@ -6,8 +6,25 @@ import Parser from 'rss-parser';
 import fs from 'fs';
 import os from 'os';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Handle both ESM and CJS environments
+const getDirname = () => {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch (e) {
+    return __dirname;
+  }
+};
+
+const getFilename = () => {
+  try {
+    return fileURLToPath(import.meta.url);
+  } catch (e) {
+    return __filename;
+  }
+};
+
+const _filename = getFilename();
+const _dirname = getDirname();
 
 // Load .env from the correct directory
 dotenv.config(); // Try root first
@@ -103,7 +120,7 @@ async function startServer() {
   
   // Use /tmp for serverless environments (Vercel, EdgeOne, etc.)
   const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production';
-  const USER_DATA_PATH = isServerless ? os.tmpdir() : (process.env.USER_DATA_PATH || __dirname);
+  const USER_DATA_PATH = isServerless ? os.tmpdir() : (process.env.USER_DATA_PATH || _dirname);
   const DB_FILE = path.join(USER_DATA_PATH, 'nxzj_db.json');
 
   // AI API Keys and Cache
@@ -1535,7 +1552,7 @@ async function startServer() {
     });
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
-    const staticPath = __dirname.includes('dist') ? __dirname : distPath;
+    const staticPath = _dirname.includes('dist') ? _dirname : distPath;
     app.use(express.static(staticPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(staticPath, 'index.html'));
@@ -1543,7 +1560,7 @@ async function startServer() {
   }
 
   // Only listen if executed directly
-  if (process.argv[1] === __filename || process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js')) {
+  if (process.argv[1] === _filename || process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js') || process.argv[1]?.endsWith('server.cjs')) {
     const server = app.listen(PORT as number, '0.0.0.0', () => {
       const actualPort = (server.address() as any).port;
       console.log(`Server running at http://localhost:${actualPort}`);
@@ -1558,4 +1575,9 @@ async function startServer() {
 
 startServer();
 
+// Export for both ESM and CJS environments
 export default app;
+// @ts-ignore
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { app };
+}

@@ -6,8 +6,14 @@
 
 // 获取 Electron 注入的后端端口，如果没有则使用相对路径
 const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.backendPort) {
-    return `http://localhost:${(window as any).electron.backendPort}`;
+  if (typeof window !== 'undefined') {
+    // If running on Vercel, the API is on the same domain under /api
+    if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('onrender.com') || window.location.hostname.includes('zeabur.app')) {
+      return '';
+    }
+    if ((window as any).electron && (window as any).electron.backendPort) {
+      return `http://localhost:${(window as any).electron.backendPort}`;
+    }
   }
   return ''; // Fallback to relative path
 };

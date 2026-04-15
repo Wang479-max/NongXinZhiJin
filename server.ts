@@ -98,7 +98,7 @@ function generateMockAIResult(type: string, plot: any) {
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
-  const USER_DATA_PATH = process.env.USER_DATA_PATH || __dirname;
+  const USER_DATA_PATH = process.env.VERCEL ? '/tmp' : (process.env.USER_DATA_PATH || __dirname);
   const DB_FILE = path.join(USER_DATA_PATH, 'nxzj_db.json');
 
   // AI API Keys and Cache
@@ -1536,13 +1536,24 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(PORT as number, '0.0.0.0', () => {
-    const actualPort = (server.address() as any).port;
-    console.log(`Server running at http://localhost:${actualPort}`);
-    if (process.send) {
-      process.send({ type: 'server-ready', port: actualPort });
-    }
-  });
+  if (process.env.VERCEL) {
+    // Vercel handles the port binding
+    console.log('Running on Vercel Serverless');
+  } else {
+    const server = app.listen(PORT as number, '0.0.0.0', () => {
+      const actualPort = (server.address() as any).port;
+      console.log(`Server running at http://localhost:${actualPort}`);
+      if (process.send) {
+        process.send({ type: 'server-ready', port: actualPort });
+      }
+    });
+  }
+  
+  return app;
 }
 
-startServer();
+const appPromise = startServer();
+export default async function (req: any, res: any) {
+  const app = await appPromise;
+  return app(req, res);
+}

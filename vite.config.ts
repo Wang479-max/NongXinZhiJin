@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: './',
+    base: process.env.VERCEL ? '/' : './',
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.ZHIPU_AI_KEY': JSON.stringify(process.env.ZHIPU_AI_KEY || env.ZHIPU_AI_KEY || ''),

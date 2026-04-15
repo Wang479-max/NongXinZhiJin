@@ -7,15 +7,15 @@
 // 获取 Electron 注入的后端端口，如果没有则使用相对路径
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
-    // If running on Vercel, the API is on the same domain under /api
-    if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('onrender.com') || window.location.hostname.includes('zeabur.app')) {
-      return '';
-    }
     if ((window as any).electron && (window as any).electron.backendPort) {
       return `http://localhost:${(window as any).electron.backendPort}`;
     }
   }
-  return ''; // Fallback to relative path
+  // 开发时用 http://localhost:3000，生产时用空字符串（即相对路径）
+  if (import.meta.env && import.meta.env.DEV) {
+    return 'http://localhost:3000';
+  }
+  return ''; 
 };
 
 export const API_BASE_URL = getApiBaseUrl();

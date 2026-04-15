@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import Parser from 'rss-parser';
 import fs from 'fs';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,10 +96,14 @@ function generateMockAIResult(type: string, plot: any) {
   }
 }
 
+export const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = process.env.PORT || 3000;
-  const USER_DATA_PATH = process.env.VERCEL ? '/tmp' : (process.env.USER_DATA_PATH || __dirname);
+  
+  // Use /tmp for serverless environments (Vercel, EdgeOne, etc.)
+  const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production';
+  const USER_DATA_PATH = isServerless ? os.tmpdir() : (process.env.USER_DATA_PATH || __dirname);
   const DB_FILE = path.join(USER_DATA_PATH, 'nxzj_db.json');
 
   // AI API Keys and Cache
@@ -1521,12 +1526,13 @@ async function startServer() {
 
   if (process.env.NODE_ENV !== 'production') {
     const viteModule = 'vite';
-    const { createServer: createViteServer } = await import(viteModule);
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+    import(viteModule).then(async ({ createServer: createViteServer }) => {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
     });
-    app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
     const staticPath = __dirname.includes('dist') ? __dirname : distPath;
@@ -1536,10 +1542,8 @@ async function startServer() {
     });
   }
 
-  if (process.env.VERCEL) {
-    // Vercel handles the port binding
-    console.log('Running on Vercel Serverless');
-  } else {
+  // Only listen if executed directly
+  if (process.argv[1] === __filename || process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js')) {
     const server = app.listen(PORT as number, '0.0.0.0', () => {
       const actualPort = (server.address() as any).port;
       console.log(`Server running at http://localhost:${actualPort}`);
@@ -1552,8 +1556,6 @@ async function startServer() {
   return app;
 }
 
-const appPromise = startServer();
-export default async function (req: any, res: any) {
-  const app = await appPromise;
-  return app(req, res);
-}
+startServer();
+
+export default app;
